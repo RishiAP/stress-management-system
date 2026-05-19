@@ -1,0 +1,28 @@
+[project]
+name = "hybrid-stress-system"
+version = "0.1.0"
+description = "Hybrid physiological and psychological stress detection system"
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "xgboost",
+    "lightgbm",
+    "imbalanced-learn",
+    "joblib",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "matplotlib",
+    "seaborn",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
