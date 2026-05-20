@@ -52,6 +52,11 @@ stress-management-system/
 │   ├── prisma/              # Database schema (PostgreSQL)
 │   └── package.json         # Node dependencies (Next.js 16, Tailwind, Clerk)
 │
+├── firmware/                # Phase 4: ESP32 PlatformIO Firmware
+│   ├── include/             # Config (pins, rates) and header declarations
+│   ├── src/                 # Sensor drivers, sampler, HTTP client, provisioning
+│   └── platformio.ini       # Build config and library dependencies
+│
 ├── render.yaml              # Render Infrastructure-as-Code Blueprint
 ├── requirements.md          # Physiological signal processing requirements (Phase 1)
 └── microservices_requirements.md # Microservice engineering requirements (Phase 2)
