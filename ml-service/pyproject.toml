@@ -1,29 +1,32 @@
 [project]
-name = "hybrid-stress-system"
-version = "0.1.0"
-description = "Hybrid physiological and psychological stress detection system"
+name = "ml-inference-service"
+version = "1.0.0"
+description = "ML inference microservice for stress detection"
 requires-python = ">=3.10"
 
 dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
     "numpy",
-    "pandas",
     "scipy",
     "scikit-learn",
+    "joblib",
+    "huggingface_hub",
     "xgboost",
     "lightgbm",
     "imbalanced-learn",
-    "joblib",
-    "tqdm",
-    "huggingface_hub",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "matplotlib",
-    "seaborn",
+    "httpx",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
