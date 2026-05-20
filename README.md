@@ -43,6 +43,15 @@ stress-management-system/
 │   ├── requirements.txt     # Pinned Python package dependencies for production
 │   └── run.sh               # Dev server runner and test automation script
 │
+├── app/                     # Phase 3: Next.js Full-Stack Application
+│   ├── src/                 # Application source code
+│   │   ├── app/             # App Router pages and API routes (/api/ingest)
+│   │   ├── components/      # shadcn/ui components & live dashboard UI
+│   │   ├── hooks/           # Data fetching and polling hooks
+│   │   └── lib/             # Baseline Psychological scoring, Prisma, and ML Client logic
+│   ├── prisma/              # Database schema (PostgreSQL)
+│   └── package.json         # Node dependencies (Next.js 16, Tailwind, Clerk)
+│
 ├── render.yaml              # Render Infrastructure-as-Code Blueprint
 ├── requirements.md          # Physiological signal processing requirements (Phase 1)
 └── microservices_requirements.md # Microservice engineering requirements (Phase 2)

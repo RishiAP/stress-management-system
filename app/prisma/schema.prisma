@@ -1,0 +1,89 @@
+// Prisma schema for Hybrid Stress Management System
+// Uses Supabase PostgreSQL with PrismaPg adapter
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+// Synced from Clerk. The ID is the Clerk user ID string (e.g. "user_2x...").
+model User {
+  id        String   @id // Clerk user ID
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices     Device[]
+  assessments Assessment[]
+  predictions Prediction[]
+}
+
+// ─── Device ───────────────────────────────────────────────────────────────────
+// Represents a registered ESP32 wearable device.
+// Each device gets a crypto-random token for authentication (not Clerk).
+model Device {
+  id        String    @id @default(cuid())
+  name      String // e.g. "Wrist Band #1"
+  token     String    @unique // crypto-random device auth token
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isOnline  Boolean   @default(false)
+  lastSeen  DateTime?
+  createdAt DateTime  @default(now())
+
+  predictions Prediction[]
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ─── Assessment ───────────────────────────────────────────────────────────────
+// DASS-21 questionnaire submission.
+// Stores both raw answers (audit trail) and computed modifier.
+model Assessment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers      Int[] // 21 integers, each 0–3
+  stressRaw    Int // DASS-21 stress subscale raw score (0–42)
+  dassModifier Float // Computed modifier (0.0–0.20)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ─── Prediction ───────────────────────────────────────────────────────────────
+// Each row is one inference result from the ML microservice,
+// enriched with the hybrid DASS-21 scoring.
+model Prediction {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  // ML microservice raw response
+  physiologicalScore Float // 0.0–1.0
+  featuresUsed       Json // 15-feature dict from ml-service
+
+  // Hybrid scoring (computed by Next.js backend)
+  dassModifier Float  @default(0) // 0.0–0.20 at time of prediction
+  hybridScore  Float // 0–100
+  category     String // "Low Stress" | "Moderate Stress" | "High Stress"
+
+  // Denormalized vitals for fast dashboard queries
+  heartRate   Float? // mean_hr from features
+  gsrLevel    Float? // mean_eda from features
+  temperature Float? // mean_temp from features
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([deviceId])
+}
