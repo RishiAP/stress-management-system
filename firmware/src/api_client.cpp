@@ -36,31 +36,36 @@ bool sendWindow(const float* bvp, int bvpLen,
   String url = serverUrl + API_ENDPOINT;
 
   // ── Build JSON with ArduinoJson ──────────────────────────────────────────
-  // Estimate document size:
-  //   3 arrays × (array overhead + N × float size)
-  //   ~1000×8 + 100×8 + 10×8 + overhead ≈ 12KB
   JsonDocument doc;
 
   JsonArray bvpArr = doc["bvp_window"].to<JsonArray>();
-  for (int i = 0; i < bvpLen; i++) {
-    bvpArr.add(serialized(String(bvp[i], 2)));
+  if (bvp != nullptr) {
+    for (int i = 0; i < bvpLen; i++) {
+      bvpArr.add(serialized(String(bvp[i], 2)));
+    }
   }
 
   JsonArray gsrArr = doc["gsr_window"].to<JsonArray>();
-  for (int i = 0; i < gsrLen; i++) {
-    gsrArr.add(serialized(String(gsr[i], 4)));
+  if (gsr != nullptr) {
+    for (int i = 0; i < gsrLen; i++) {
+      gsrArr.add(serialized(String(gsr[i], 4)));
+    }
   }
 
   JsonArray tempArr = doc["temp_window"].to<JsonArray>();
-  for (int i = 0; i < tempLen; i++) {
-    tempArr.add(serialized(String(temp[i], 2)));
+  if (temp != nullptr) {
+    for (int i = 0; i < tempLen; i++) {
+      tempArr.add(serialized(String(temp[i], 2)));
+    }
   }
 
   // Serialize to string
   String payload;
   serializeJson(doc, payload);
 
-  Serial.println("[API] Payload size: " + String(payload.length()) + " bytes");
+  bool isHeartbeat = (bvpLen == 0 && gsrLen == 0 && tempLen == 0);
+  Serial.println("[API] " + String(isHeartbeat ? "Heartbeat" : "Data") +
+                 " payload: " + String(payload.length()) + " bytes");
 
   // ── HTTP POST ────────────────────────────────────────────────────────────
   HTTPClient http;
@@ -77,14 +82,16 @@ bool sendWindow(const float* bvp, int bvpLen,
     String response = http.getString();
     Serial.println("[API] ✓ 200 OK (" + String(elapsed) + "ms)");
 
-    // Parse response for debug logging
-    JsonDocument resDoc;
-    DeserializationError err = deserializeJson(resDoc, response);
-    if (!err) {
-      float score = resDoc["hybridScore"] | -1.0f;
-      const char* category = resDoc["category"] | "unknown";
-      Serial.println("[API] Hybrid Score: " + String(score, 1) +
-                     " | Category: " + String(category));
+    // Parse response for debug logging (only for data, not heartbeats)
+    if (!isHeartbeat) {
+      JsonDocument resDoc;
+      DeserializationError err = deserializeJson(resDoc, response);
+      if (!err) {
+        float score = resDoc["hybridScore"] | -1.0f;
+        const char* category = resDoc["category"] | "unknown";
+        Serial.println("[API] Score: " + String(score, 1) +
+                       " | Category: " + String(category));
+      }
     }
 
     http.end();

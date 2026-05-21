@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRef, useState, useEffect, useMemo } from "react";
+import api from "@/lib/api";
 
 export interface LatestPrediction {
   id: string;
@@ -13,61 +15,94 @@ export interface LatestPrediction {
   temperature: number | null;
   deviceId: string | null;
   createdAt: string;
-  device: { name: string; isOnline: boolean } | null;
+  device: { name: string; isOnline: boolean; lastSeen: string } | null;
 }
+
+export interface DeviceInfo {
+  name: string;
+  isOnline: boolean;
+  lastSeen: string;
+}
+
+export type DeviceState = "LIVE" | "NOT_WORN" | "OFFLINE";
 
 interface UsePollReturn {
   latest: LatestPrediction | null;
-  /** Last N predictions kept in memory for sparklines/charts */
   history: LatestPrediction[];
   isLoading: boolean;
   lastUpdated: Date | null;
+  deviceState: DeviceState;
+  deviceInfo: DeviceInfo | null;
+  now: number;
 }
 
 const POLL_INTERVAL_MS = 5000;
-const MAX_HISTORY = 60; // ~30 min of 30s windows
+const MAX_HISTORY = 60;
+const STALE_THRESHOLD_MS = 35000;
+
+async function fetchLatest() {
+  const { data } = await api.get<{
+    prediction: LatestPrediction | null;
+    device: DeviceInfo | null;
+  }>("/predictions/latest");
+  return data;
+}
 
 export function usePolling(): UsePollReturn {
-  const [latest, setLatest] = useState<LatestPrediction | null>(null);
   const [history, setHistory] = useState<LatestPrediction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  // Track the last seen prediction id to avoid duplicate pushes into history
   const lastIdRef = useRef<string | null>(null);
 
-  const poll = useCallback(async () => {
-    try {
-      const res = await fetch("/api/predictions/latest", { cache: "no-store" });
-      if (!res.ok) return;
+  const { data, isLoading } = useQuery({
+    queryKey: ["predictions", "latest"],
+    queryFn: fetchLatest,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+  });
 
-      const data: LatestPrediction | null = await res.json();
-      if (!data) return;
+  const prediction = data?.prediction ?? null;
+  const deviceInfo = data?.device ?? null;
 
-      setLatest(data);
-      setLastUpdated(new Date());
-
-      // Only push to history when there's a genuinely new prediction
-      if (data.id !== lastIdRef.current) {
-        lastIdRef.current = data.id;
-        setHistory((prev) => {
-          const next = [data, ...prev];
-          return next.slice(0, MAX_HISTORY);
-        });
-      }
-    } catch {
-      // Network error — silently ignore, next poll will retry
-    } finally {
-      setIsLoading(false);
-    }
+  // Force re-render every second so relative times and deviceState keep ticking
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
   }, []);
 
+  // Track history
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void poll(); // initial fetch on mount
-    const id = setInterval(() => void poll(), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [poll]);
+    if (prediction && prediction.id !== lastIdRef.current) {
+      lastIdRef.current = prediction.id;
+      setLastUpdated(new Date());
+      setHistory((prev) => [prediction, ...prev].slice(0, MAX_HISTORY));
+    }
+  }, [prediction]);
 
-  return { latest, history, isLoading, lastUpdated };
+  // Compute device state
+  const deviceState = useMemo<DeviceState>(() => {
+    if (deviceInfo?.lastSeen) {
+      const deviceAge = now - new Date(deviceInfo.lastSeen).getTime();
+
+      if (deviceAge < STALE_THRESHOLD_MS) {
+        if (prediction) {
+          const dataAge = now - new Date(prediction.createdAt).getTime();
+          return dataAge < STALE_THRESHOLD_MS ? "LIVE" : "NOT_WORN";
+        }
+        return "NOT_WORN";
+      }
+    }
+
+    return "OFFLINE";
+  }, [deviceInfo, prediction, now]);
+
+  return {
+    latest: prediction,
+    history,
+    isLoading,
+    lastUpdated,
+    deviceState,
+    deviceInfo,
+    now,
+  };
 }

@@ -13,7 +13,8 @@ static DallasTemperature tempSensor(&oneWire);
 
 // Track whether DS18B20 has a pending async read
 static bool tempRequested = false;
-static float lastTemp = 0.0f;
+static float lastTemp = -127.0f; // sentinel: no reading yet
+static bool tempSensorPresent = false;
 
 bool initSensors() {
   // ── MAX30102 (I2C) ──────────────────────────────────────────────────────
@@ -45,13 +46,26 @@ bool initSensors() {
 
   if (tempSensor.getDeviceCount() == 0) {
     Serial.println("[SENSOR] DS18B20 not found! Check wiring + 4.7k pull-up.");
-    // Non-fatal: temperature will read -127.0
+    Serial.println("[SENSOR] Temperature will use MAX30102 die temp as fallback.");
+    tempSensorPresent = false;
   } else {
-    // Set to 9-bit resolution for faster reads (~94ms instead of ~750ms)
-    tempSensor.setResolution(9);
+    // Set to 10-bit resolution (~188ms conversion) for a good balance
+    // between speed and precision (0.25°C resolution)
+    tempSensor.setResolution(10);
     // Use async mode so we don't block loop()
     tempSensor.setWaitForConversion(false);
-    Serial.println("[SENSOR] DS18B20 initialized (9-bit, async)");
+    tempSensorPresent = true;
+    Serial.println("[SENSOR] DS18B20 initialized (10-bit, async)");
+    
+    // Do one synchronous read to prime lastTemp with a real value
+    tempSensor.setWaitForConversion(true);
+    tempSensor.requestTemperatures();
+    float t = tempSensor.getTempCByIndex(0);
+    if (t != DEVICE_DISCONNECTED_C && t > -40.0f && t < 85.0f) {
+      lastTemp = t;
+      Serial.println("[SENSOR] Initial temp: " + String(lastTemp, 2) + " °C");
+    }
+    tempSensor.setWaitForConversion(false);
   }
 
   // ── GSR (Analog) ───────────────────────────────────────────────────────
@@ -78,6 +92,13 @@ float readGSR() {
 }
 
 float readTemp() {
+  if (!tempSensorPresent) {
+    // Fallback: use MAX30102 internal die temperature
+    // Less accurate for skin but better than nothing
+    float dieTemp = particleSensor.readTemperature();
+    return dieTemp;
+  }
+
   // If we haven't started a conversion yet, start one
   if (!tempRequested) {
     tempSensor.requestTemperatures();
@@ -85,10 +106,12 @@ float readTemp() {
     return lastTemp; // return previous reading while we wait
   }
 
-  // Check if conversion is complete
+  // Check if conversion is complete (~188ms for 10-bit)
   if (tempSensor.isConversionComplete()) {
     float t = tempSensor.getTempCByIndex(0);
-    if (t != DEVICE_DISCONNECTED_C) {
+    // Sanity check: DS18B20 valid range is -55°C to +125°C
+    // but skin temp should be 20-42°C, we use wider bounds for safety
+    if (t != DEVICE_DISCONNECTED_C && t > -40.0f && t < 85.0f) {
       lastTemp = t;
     }
     tempRequested = false; // allow next request

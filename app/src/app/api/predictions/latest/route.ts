@@ -5,9 +5,9 @@ import { prisma } from "@/lib/prisma";
 /**
  * GET /api/predictions/latest
  *
- * Returns the single most recent prediction for the authenticated user.
- * Called every 5 seconds by the dashboard polling hook.
- * Much simpler and Vercel-compatible vs WebSockets.
+ * Returns the single most recent prediction for the authenticated user,
+ * PLUS independent device status info (lastSeen) so the dashboard can
+ * distinguish between OFFLINE and NOT_WORN states.
  */
 export async function GET() {
   const { userId } = await auth();
@@ -15,23 +15,35 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const prediction = await prisma.prediction.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      hybridScore: true,
-      category: true,
-      physiologicalScore: true,
-      dassModifier: true,
-      heartRate: true,
-      gsrLevel: true,
-      temperature: true,
-      deviceId: true,
-      createdAt: true,
-      device: { select: { name: true, isOnline: true } },
-    },
-  });
+  // Fetch latest prediction and device status in parallel
+  const [prediction, device] = await Promise.all([
+    prisma.prediction.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        hybridScore: true,
+        category: true,
+        physiologicalScore: true,
+        dassModifier: true,
+        heartRate: true,
+        gsrLevel: true,
+        temperature: true,
+        deviceId: true,
+        createdAt: true,
+        device: { select: { name: true, isOnline: true, lastSeen: true } },
+      },
+    }),
+    // Get the most recently active device for this user (independently)
+    prisma.device.findFirst({
+      where: { userId },
+      orderBy: { lastSeen: "desc" },
+      select: { name: true, isOnline: true, lastSeen: true },
+    }),
+  ]);
 
-  return NextResponse.json(prediction ?? null);
+  return NextResponse.json({
+    prediction: prediction ?? null,
+    device: device ?? null,
+  });
 }

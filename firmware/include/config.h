@@ -42,7 +42,7 @@
 // Override for local dev by adding to platformio.ini build_flags:
 //   -DSERVER_URL='"http://192.168.1.100:3000"'
 #ifndef SERVER_URL
-#define SERVER_URL "https://your-app.vercel.app"
+#define SERVER_URL "http://192.168.1.168:3000"
 #endif
 
 // ─── Preferences Namespace ──────────────────────────────────────────────────

@@ -59,14 +59,30 @@ export async function POST(req: NextRequest) {
 
   const { bvp_window, gsr_window, temp_window } = body;
 
-  if (
-    !Array.isArray(bvp_window) ||
-    bvp_window.length < MIN_BVP ||
-    !Array.isArray(gsr_window) ||
-    gsr_window.length < MIN_GSR ||
-    !Array.isArray(temp_window) ||
-    temp_window.length < MIN_TEMP
-  ) {
+  const isArrayValid = (arr: unknown) => Array.isArray(arr);
+  
+  if (!isArrayValid(bvp_window) || !isArrayValid(gsr_window) || !isArrayValid(temp_window)) {
+    return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
+  }
+
+  const bvp = bvp_window as number[];
+  const gsr = gsr_window as number[];
+  const temp = temp_window as number[];
+
+  // ── 3. Update device presence ─────────────────────────────────────────────
+  // We do this BEFORE length validation so heartbeats can still mark it online
+  await prisma.device.update({
+    where: { id: device.id },
+    data: { isOnline: true, lastSeen: new Date() },
+  });
+
+  // Check for heartbeat (empty payload = device is online but not worn)
+  if (bvp.length === 0 && gsr.length === 0 && temp.length === 0) {
+    return NextResponse.json({ status: "heartbeat_acknowledged" });
+  }
+
+  // Validate minimum window sizes for physiological data
+  if (bvp.length < MIN_BVP || gsr.length < MIN_GSR || temp.length < MIN_TEMP) {
     return NextResponse.json(
       {
         error: "Window sizes too small",
@@ -75,12 +91,6 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   }
-
-  // ── 3. Update device presence ─────────────────────────────────────────────
-  await prisma.device.update({
-    where: { id: device.id },
-    data: { isOnline: true, lastSeen: new Date() },
-  });
 
   // ── 4. Call ML microservice ───────────────────────────────────────────────
   let mlResult;

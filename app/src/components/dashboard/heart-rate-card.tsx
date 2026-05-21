@@ -7,14 +7,15 @@ import { cn } from "@/lib/utils";
 interface HeartRateCardProps {
   heartRate: number | null;
   history: number[]; // last N values for sparkline
+  isLive?: boolean;
 }
 
-export function HeartRateCard({ heartRate, history }: HeartRateCardProps) {
+export function HeartRateCard({ heartRate, history, isLive = true }: HeartRateCardProps) {
   const isNormal =
     heartRate !== null && heartRate >= 60 && heartRate <= 100;
   const isHigh = heartRate !== null && heartRate > 100;
 
-  const statusColor = !heartRate
+  const statusColor = !isLive || !heartRate
     ? "text-muted-foreground"
     : isHigh
       ? "text-rose-500"
@@ -49,7 +50,7 @@ export function HeartRateCard({ heartRate, history }: HeartRateCardProps) {
         </CardTitle>
         <Heart
           className={cn("h-4 w-4 transition-colors", statusColor)}
-          fill={heartRate ? "currentColor" : "none"}
+          fill={heartRate && isLive ? "currentColor" : "none"}
         />
       </CardHeader>
       <CardContent className="pt-3">
@@ -63,7 +64,9 @@ export function HeartRateCard({ heartRate, history }: HeartRateCardProps) {
             >
               {heartRate !== null ? Math.round(heartRate) : "--"}
             </span>
-            <span className="ml-1 text-sm text-muted-foreground">BPM</span>
+            <span className="ml-1 text-sm text-muted-foreground">
+              BPM
+            </span>
           </div>
 
           {/* Sparkline */}
@@ -90,11 +93,13 @@ export function HeartRateCard({ heartRate, history }: HeartRateCardProps) {
         <p className="mt-1 text-xs text-muted-foreground">
           {!heartRate
             ? "Awaiting signal"
-            : isHigh
-              ? "Elevated — above normal range"
-              : isNormal
-                ? "Normal range (60–100 BPM)"
-                : "Below normal range"}
+            : !isLive
+              ? "Device is not worn or offline"
+              : isHigh
+                ? "Elevated — above normal range"
+                : isNormal
+                  ? "Normal range (60–100 BPM)"
+                  : "Below normal range"}
         </p>
       </CardContent>
     </Card>

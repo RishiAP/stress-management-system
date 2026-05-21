@@ -16,12 +16,19 @@ static float txTemp[TEMP_BUFFER_SIZE];
 static unsigned long lastWifiCheck = 0;
 static const unsigned long WIFI_CHECK_INTERVAL_MS = 10000; // 10s
 
+// ─── Wear Detection Thresholds ─────────────────────────────────────────────
+// MAX30102 IR reflectance: finger present → >50k, empty → <10k
+static const float IR_WEAR_THRESHOLD = 50000.0f;
+// GSR open circuit: reads near 0V or near 3.3V when pads aren't touching skin
+static const float GSR_LOW_THRESHOLD = 0.1f;
+static const float GSR_HIGH_THRESHOLD = 3.2f;
+
 void setup() {
   Serial.begin(115200);
   delay(500); // let Serial settle
   Serial.println();
   Serial.println("╔══════════════════════════════════════╗");
-  Serial.println("║   NeuroSync ESP32 Firmware v1.0      ║");
+  Serial.println("║   NeuroSync ESP32 Firmware v1.1      ║");
   Serial.println("╚══════════════════════════════════════╝");
 
   // ── 1. Check for factory reset (hold BOOT button) ────────────────────────
@@ -61,20 +68,52 @@ void loop() {
 
   // ── Check if a complete window is ready ───────────────────────────────────
   if (isWindowReady()) {
-    Serial.println("[MAIN] Window ready — transmitting...");
+    Serial.println("[MAIN] Window ready — analyzing...");
 
     // Copy data out of ring buffers
     getWindow(txBvp, txGsr, txTemp);
 
-    // Send to backend
-    bool ok = sendWindow(txBvp, BVP_BUFFER_SIZE,
-                         txGsr, GSR_BUFFER_SIZE,
-                         txTemp, TEMP_BUFFER_SIZE);
+    // ── Compute averages for wear detection ─────────────────────────────────
+    float avgBvp = 0, avgGsr = 0, avgTemp = 0;
+    for (int i = 0; i < BVP_BUFFER_SIZE; i++) avgBvp += txBvp[i];
+    avgBvp /= BVP_BUFFER_SIZE;
 
-    if (ok) {
-      Serial.println("[MAIN] ✓ Window sent successfully");
+    for (int i = 0; i < GSR_BUFFER_SIZE; i++) avgGsr += txGsr[i];
+    avgGsr /= GSR_BUFFER_SIZE;
+
+    for (int i = 0; i < TEMP_BUFFER_SIZE; i++) avgTemp += txTemp[i];
+    avgTemp /= TEMP_BUFFER_SIZE;
+
+    Serial.println("[MAIN] Avg IR:   " + String(avgBvp, 0));
+    Serial.println("[MAIN] Avg GSR:  " + String(avgGsr, 2) + " V");
+    Serial.println("[MAIN] Avg Temp: " + String(avgTemp, 2) + " °C");
+
+    // ── Wear detection: check if ANY sensor indicates not worn ──────────────
+    bool irBad = avgBvp < IR_WEAR_THRESHOLD;
+    bool gsrBad = avgGsr < GSR_LOW_THRESHOLD || avgGsr > GSR_HIGH_THRESHOLD;
+
+    if (irBad || gsrBad) {
+      // Device not worn — send empty heartbeat
+      Serial.print("[MAIN] NOT WORN → ");
+      if (irBad) Serial.print("IR low ");
+      if (gsrBad) Serial.print("GSR open-circuit ");
+      Serial.println();
+
+      bool ok = sendWindow(nullptr, 0, nullptr, 0, nullptr, 0);
+      Serial.println(ok ? "[MAIN] ✓ Heartbeat sent" : "[MAIN] ✗ Heartbeat failed");
     } else {
-      Serial.println("[MAIN] ✗ Window send failed — will retry next window");
+      // Device worn — send full physiological data
+      Serial.println("[MAIN] WORN → sending data...");
+
+      bool ok = sendWindow(txBvp, BVP_BUFFER_SIZE,
+                           txGsr, GSR_BUFFER_SIZE,
+                           txTemp, TEMP_BUFFER_SIZE);
+
+      if (ok) {
+        Serial.println("[MAIN] ✓ Window sent successfully");
+      } else {
+        Serial.println("[MAIN] ✗ Window send failed — will retry next window");
+      }
     }
 
     Serial.println();
