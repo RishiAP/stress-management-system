@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 interface DassResult {
   id: string;
   stressRaw: number;
+  anxietyRaw: number;
+  depressionRaw: number;
   dassModifier: number;
   createdAt: string;
 }
@@ -67,48 +69,79 @@ export function Dass21Form({ onComplete }: Dass21FormProps) {
     }
   }
 
-  if (result) {
-    const stressLevel =
-      result.stressRaw <= 14
-        ? "Normal"
-        : result.stressRaw <= 18
-          ? "Mild"
-          : result.stressRaw <= 25
-            ? "Moderate"
-            : result.stressRaw <= 33
-              ? "Severe"
-              : "Extremely Severe";
+  function getLevel(score: number, type: 'stress' | 'anxiety' | 'depression') {
+    if (type === 'stress') {
+      return score <= 14 ? "Normal" : score <= 18 ? "Mild" : score <= 25 ? "Moderate" : score <= 33 ? "Severe" : "Extremely Severe";
+    }
+    if (type === 'anxiety') {
+      return score <= 7 ? "Normal" : score <= 9 ? "Mild" : score <= 14 ? "Moderate" : score <= 19 ? "Severe" : "Extremely Severe";
+    }
+    if (type === 'depression') {
+      return score <= 9 ? "Normal" : score <= 13 ? "Mild" : score <= 20 ? "Moderate" : score <= 27 ? "Severe" : "Extremely Severe";
+    }
+    return "Normal";
+  }
 
-    const levelColor =
-      result.stressRaw <= 14
-        ? "default"
-        : result.stressRaw <= 18
-          ? "secondary"
-          : result.stressRaw <= 25
-            ? "outline"
-            : "destructive";
+  function getColor(score: number, type: 'stress' | 'anxiety' | 'depression'): "default" | "secondary" | "outline" | "destructive" {
+    const level = getLevel(score, type);
+    if (level === "Normal") return "default";
+    if (level === "Mild") return "secondary";
+    if (level === "Moderate") return "outline";
+    return "destructive";
+  }
+
+  if (result) {
+    const stressLevel = getLevel(result.stressRaw, 'stress');
+    const anxietyLevel = getLevel(result.anxietyRaw, 'anxiety');
+    const depressionLevel = getLevel(result.depressionRaw, 'depression');
 
     return (
       <Card className="max-w-lg mx-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Assessment Complete</CardTitle>
           <CardDescription>
-            Your psychological stress subscale results
+            Your DASS-21 Subscale Results
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="text-5xl font-bold tabular-nums">
-              {result.stressRaw}
-              <span className="text-xl text-muted-foreground font-normal">
-                /42
-              </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Stress */}
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Stress</span>
+              <div className="text-4xl font-bold tabular-nums">
+                {result.stressRaw}
+              </div>
+              <Badge variant={getColor(result.stressRaw, 'stress')}>
+                {stressLevel}
+              </Badge>
             </div>
-            <Badge variant={levelColor as "default" | "secondary" | "outline" | "destructive"}>
-              {stressLevel} Stress
-            </Badge>
+
+            {/* Anxiety */}
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Anxiety</span>
+              <div className="text-4xl font-bold tabular-nums">
+                {result.anxietyRaw}
+              </div>
+              <Badge variant={getColor(result.anxietyRaw, 'anxiety')}>
+                {anxietyLevel}
+              </Badge>
+            </div>
+
+            {/* Depression */}
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Depression</span>
+              <div className="text-4xl font-bold tabular-nums">
+                {result.depressionRaw}
+              </div>
+              <Badge variant={getColor(result.depressionRaw, 'depression')}>
+                {depressionLevel}
+              </Badge>
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-3 mt-6">
             <p className="text-sm text-muted-foreground text-center">
-              This score adjusts your physiological stress readings by up to{" "}
+              Your Stress score adjusts your live physiological readings by up to{" "}
               <strong>{(result.dassModifier * 100).toFixed(1)}%</strong>
             </p>
           </div>

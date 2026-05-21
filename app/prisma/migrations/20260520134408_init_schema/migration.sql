@@ -1,16 +1,16 @@
 -- CreateTable
-CREATE TABLE "User" (
+CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Device" (
+CREATE TABLE "devices" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "token" TEXT NOT NULL,
@@ -19,23 +19,25 @@ CREATE TABLE "Device" (
     "lastSeen" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Device_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "devices_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Assessment" (
+CREATE TABLE "assessments" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "answers" INTEGER[],
     "stressRaw" INTEGER NOT NULL,
+    "anxietyRaw" INTEGER,
+    "depressionRaw" INTEGER,
     "dassModifier" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Assessment_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "assessments_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Prediction" (
+CREATE TABLE "predictions" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "deviceId" TEXT,
@@ -49,38 +51,38 @@ CREATE TABLE "Prediction" (
     "temperature" DOUBLE PRECISION,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Prediction_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "predictions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Device_token_key" ON "Device"("token");
+CREATE UNIQUE INDEX "devices_token_key" ON "devices"("token");
 
 -- CreateIndex
-CREATE INDEX "Device_userId_idx" ON "Device"("userId");
+CREATE INDEX "devices_userId_idx" ON "devices"("userId");
 
 -- CreateIndex
-CREATE INDEX "Device_token_idx" ON "Device"("token");
+CREATE INDEX "devices_token_idx" ON "devices"("token");
 
 -- CreateIndex
-CREATE INDEX "Assessment_userId_createdAt_idx" ON "Assessment"("userId", "createdAt" DESC);
+CREATE INDEX "assessments_userId_createdAt_idx" ON "assessments"("userId", "createdAt" DESC);
 
 -- CreateIndex
-CREATE INDEX "Prediction_userId_createdAt_idx" ON "Prediction"("userId", "createdAt" DESC);
+CREATE INDEX "predictions_userId_createdAt_idx" ON "predictions"("userId", "createdAt" DESC);
 
 -- CreateIndex
-CREATE INDEX "Prediction_deviceId_idx" ON "Prediction"("deviceId");
+CREATE INDEX "predictions_deviceId_idx" ON "predictions"("deviceId");
 
 -- AddForeignKey
-ALTER TABLE "Device" ADD CONSTRAINT "Device_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "devices" ADD CONSTRAINT "devices_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Assessment" ADD CONSTRAINT "Assessment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "assessments" ADD CONSTRAINT "assessments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Prediction" ADD CONSTRAINT "Prediction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "predictions" ADD CONSTRAINT "predictions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Prediction" ADD CONSTRAINT "Prediction_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "Device"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "predictions" ADD CONSTRAINT "predictions_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "devices"("id") ON DELETE SET NULL ON UPDATE CASCADE;

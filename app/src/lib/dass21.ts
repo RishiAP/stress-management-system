@@ -12,6 +12,8 @@
 
 export interface DassResult {
   stressRaw: number; // 0–42
+  anxietyRaw: number; // 0-42
+  depressionRaw: number; // 0-42
   dassModifier: number; // 0.0–0.20 — applied to hybrid score
 }
 
@@ -42,6 +44,8 @@ export const DASS21_QUESTIONS = [
 
 // Zero-indexed positions of the 7 stress subscale items
 export const STRESS_ITEMS = [0, 5, 7, 10, 11, 13, 17] as const;
+export const ANXIETY_ITEMS = [1, 3, 6, 8, 14, 18, 19] as const;
+export const DEPRESSION_ITEMS = [2, 4, 9, 12, 15, 16, 20] as const;
 
 // Answer labels for the 4-point Likert scale
 export const DASS21_ANSWER_LABELS = [
@@ -70,9 +74,11 @@ export function computeDassModifier(answers: number[]): DassResult {
 
   // Sum only the 7 stress subscale items
   const stressRaw = STRESS_ITEMS.reduce<number>((sum, idx) => sum + answers[idx], 0);
+  const anxietyRaw = ANXIETY_ITEMS.reduce<number>((sum, idx) => sum + answers[idx], 0);
+  const depressionRaw = DEPRESSION_ITEMS.reduce<number>((sum, idx) => sum + answers[idx], 0);
 
   // Normalize to 0.0–0.20 modifier range (max 20% influence on hybrid score)
   const dassModifier = (stressRaw / 42) * 0.2;
 
-  return { stressRaw, dassModifier };
+  return { stressRaw, anxietyRaw, depressionRaw, dassModifier };
 }

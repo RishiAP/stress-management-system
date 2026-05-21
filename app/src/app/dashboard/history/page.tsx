@@ -544,6 +544,74 @@ export default function HistoryPage() {
           details
         </p>
       )}
+
+      <Separator />
+
+      {/* DASS-21 History Section */}
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight mb-4">
+          Psychological Assessment History (DASS-21)
+        </h2>
+        <DassHistory />
+      </div>
+    </div>
+  );
+}
+
+function DassHistory() {
+  const { data: assessments, isLoading } = useQuery({
+    queryKey: ["assessments", "history"],
+    queryFn: async () => {
+      const { data } = await api.get<{
+        id: string;
+        stressRaw: number;
+        anxietyRaw: number;
+        depressionRaw: number;
+        createdAt: string;
+      }[]>("/assess/history");
+      return data;
+    },
+  });
+
+  if (isLoading) return <Skeleton className="h-[200px] w-full" />;
+
+  if (!assessments || assessments.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center gap-3 py-10">
+          <p className="text-sm text-muted-foreground">
+            No psychological assessments taken yet.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {assessments.map((a) => (
+        <Card key={a.id}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {new Date(a.createdAt).toLocaleString()}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center text-sm mb-1">
+              <span>Stress:</span>
+              <span className="font-bold">{a.stressRaw ?? "N/A"}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm mb-1">
+              <span>Anxiety:</span>
+              <span className="font-bold">{a.anxietyRaw ?? "N/A"}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span>Depression:</span>
+              <span className="font-bold">{a.depressionRaw ?? "N/A"}</span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

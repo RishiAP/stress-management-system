@@ -42,8 +42,23 @@ export async function GET() {
     }),
   ]);
 
+  const now = Date.now();
+  
+  const modifiedDevice = device ? {
+    ...device,
+    isOnline: device.lastSeen ? (now - new Date(device.lastSeen).getTime() < 30000) : false
+  } : null;
+  
+  const modifiedPrediction = prediction ? {
+    ...prediction,
+    device: prediction.device ? {
+      ...prediction.device,
+      isOnline: prediction.device.lastSeen ? (now - new Date(prediction.device.lastSeen).getTime() < 30000) : false
+    } : null
+  } : null;
+
   return NextResponse.json({
-    prediction: prediction ?? null,
-    device: device ?? null,
+    prediction: modifiedPrediction,
+    device: modifiedDevice,
   });
 }

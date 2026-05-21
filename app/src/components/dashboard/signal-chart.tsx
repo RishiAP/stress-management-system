@@ -40,7 +40,17 @@ export function SignalChart({ title, unit, color, data, now, isLive = true }: Si
   const TIME_WINDOW_MS = 3 * 60 * 1000; // 3 minutes
   const start = now - TIME_WINDOW_MS;
 
-  const validPts = pts.filter((d) => new Date(d.timestamp).getTime() >= start);
+  let validPts = pts.filter((d) => new Date(d.timestamp).getTime() >= start);
+
+  // Apply Exponential Moving Average (EMA) smoothing to reduce visual fluctuation
+  if (validPts.length > 0) {
+    const ALPHA = 0.3; // Smoothing factor (lower = smoother but more lag)
+    let ema = validPts[0].value;
+    validPts = validPts.map((pt) => {
+      ema = ALPHA * pt.value + (1 - ALPHA) * ema;
+      return { ...pt, value: ema };
+    });
+  }
 
   // Build path
   const pathD =

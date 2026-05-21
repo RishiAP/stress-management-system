@@ -22,6 +22,8 @@ model User {
   devices     Device[]
   assessments Assessment[]
   predictions Prediction[]
+
+  @@map("users")
 }
 
 // ─── Device ───────────────────────────────────────────────────────────────────
@@ -41,21 +43,25 @@ model Device {
 
   @@index([userId])
   @@index([token])
+  @@map("devices")
 }
 
 // ─── Assessment ───────────────────────────────────────────────────────────────
 // DASS-21 questionnaire submission.
 // Stores both raw answers (audit trail) and computed modifier.
 model Assessment {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  answers      Int[] // 21 integers, each 0–3
-  stressRaw    Int // DASS-21 stress subscale raw score (0–42)
-  dassModifier Float // Computed modifier (0.0–0.20)
-  createdAt    DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       Int[] // 21 integers, each 0–3
+  stressRaw     Int // DASS-21 stress subscale raw score (0–42)
+  anxietyRaw    Int? // DASS-21 anxiety subscale raw score (0-42)
+  depressionRaw Int? // DASS-21 depression subscale raw score (0-42)
+  dassModifier  Float // Computed modifier (0.0–0.20)
+  createdAt     DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
+  @@map("assessments")
 }
 
 // ─── Prediction ───────────────────────────────────────────────────────────────
@@ -86,4 +92,5 @@ model Prediction {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([deviceId])
+  @@map("predictions")
 }

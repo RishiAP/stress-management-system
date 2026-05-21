@@ -54,11 +54,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const devices = await prisma.device.findMany({
+  const rawDevices = await prisma.device.findMany({
     where: { userId },
-    // Never expose the token in list responses
-    select: { id: true, name: true, isOnline: true, lastSeen: true, createdAt: true },
+    select: { id: true, name: true, lastSeen: true, createdAt: true, token: true },
     orderBy: { createdAt: "desc" },
+  });
+
+  // Dynamically compute online status (lastSeen within last 30 seconds)
+  const now = Date.now();
+  const devices = rawDevices.map(device => {
+    const isOnline = device.lastSeen ? (now - new Date(device.lastSeen).getTime() < 30000) : false;
+    return { ...device, isOnline };
   });
 
   return NextResponse.json(devices);

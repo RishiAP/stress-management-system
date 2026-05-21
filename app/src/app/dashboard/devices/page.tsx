@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -37,6 +38,8 @@ import {
   Copy,
   Check,
   Clock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface Device {
@@ -59,7 +62,8 @@ function formatRelative(dateStr: string | null) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function TokenDisplay({ token }: { token: string }) {
+function TokenReveal({ token }: { token: string }) {
+  const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -69,38 +73,42 @@ function TokenDisplay({ token }: { token: string }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">
-        {token}
+    <div className="flex items-center gap-2">
+      <div 
+        className="flex items-center gap-2 bg-muted px-2 py-1 rounded cursor-pointer hover:bg-muted/80 transition-colors border"
+        onClick={() => setShow(!show)}
+        title="Click to reveal/hide"
+      >
+        {show ? <EyeOff className="h-3 w-3 text-muted-foreground" /> : <Eye className="h-3 w-3 text-muted-foreground" />}
+        <code className="text-xs font-mono max-w-[120px] sm:max-w-[200px] truncate">
+          {show ? token : "••••••••••••••••••••••••"}
+        </code>
       </div>
-      <Button size="sm" variant="outline" onClick={copy} className="w-full gap-2">
-        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-        {copied ? "Copied!" : "Copy Token"}
+      <Button variant="ghost" size="icon" onClick={copy} title="Copy Token" className="h-7 w-7">
+        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
       </Button>
     </div>
   );
 }
 
 export default function DevicesPage() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [registering, setRegistering] = useState(false);
   const [newDevice, setNewDevice] = useState<Device | null>(null);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  async function loadDevices() {
-    const res = await fetch("/api/devices");
-    const data = await res.json();
-    setDevices(data);
-    setLoading(false);
-  }
+  const { data: fetchedDevices, isLoading } = useQuery({
+    queryKey: ["devices"],
+    queryFn: async () => {
+      const res = await fetch("/api/devices");
+      return res.json() as Promise<Device[]>;
+    },
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDevices();
-  }, []);
+  const devices = fetchedDevices ?? [];
 
   async function handleRegister() {
     if (!name.trim()) return;
@@ -112,14 +120,14 @@ export default function DevicesPage() {
     });
     const device: Device = await res.json();
     setNewDevice(device);
-    setDevices((prev) => [device, ...prev]);
+    await queryClient.invalidateQueries({ queryKey: ["devices"] });
     setName("");
     setRegistering(false);
   }
 
   async function handleDelete(deviceId: string) {
     await fetch(`/api/devices/${deviceId}`, { method: "DELETE" });
-    setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+    await queryClient.invalidateQueries({ queryKey: ["devices"] });
     setDeleteConfirm(null);
   }
 
@@ -157,11 +165,13 @@ export default function DevicesPage() {
                     Device Registered
                   </DialogTitle>
                   <DialogDescription>
-                    Save this token — it will not be shown again. Paste it into
-                    your ESP32 firmware config.
+                    Save this token — you can view it later in the table below, but you should copy it into
+                    your ESP32 firmware config now.
                   </DialogDescription>
                 </DialogHeader>
-                <TokenDisplay token={newDevice.token!} />
+                <div className="flex justify-center p-4">
+                  <TokenReveal token={newDevice.token!} />
+                </div>
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -208,7 +218,7 @@ export default function DevicesPage() {
       <Separator />
 
       {/* Devices table */}
-      {loading ? (
+      {isLoading ? (
         <div className="text-center text-muted-foreground py-16">
           Loading devices…
         </div>
@@ -231,6 +241,7 @@ export default function DevicesPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Last Seen</TableHead>
                 <TableHead>Registered</TableHead>
+                <TableHead>Token</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -259,6 +270,13 @@ export default function DevicesPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {new Date(device.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {device.token ? (
+                      <TokenReveal token={device.token} />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Hidden</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Dialog

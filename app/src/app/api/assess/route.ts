@@ -55,11 +55,15 @@ export async function POST(req: NextRequest) {
       userId,
       answers: answers as number[],
       stressRaw: result.stressRaw,
+      anxietyRaw: result.anxietyRaw,
+      depressionRaw: result.depressionRaw,
       dassModifier: result.dassModifier,
     },
     select: {
       id: true,
       stressRaw: true,
+      anxietyRaw: true,
+      depressionRaw: true,
       dassModifier: true,
       createdAt: true,
     },
@@ -82,7 +86,7 @@ export async function GET() {
   const latest = await prisma.assessment.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, stressRaw: true, dassModifier: true, createdAt: true },
+    select: { id: true, stressRaw: true, anxietyRaw: true, depressionRaw: true, dassModifier: true, createdAt: true },
   });
 
   return NextResponse.json(latest ?? null);
