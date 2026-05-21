@@ -1,0 +1,2 @@
+-r requirements.txt
+-e git+ssh://git@github.com-RishiAP/RishiAP/stress-management-system.git@8143c13bbb2b4e4c7ab5a83c98dc779c856ad17a#egg=ml_inference_service&subdirectory=ml-service

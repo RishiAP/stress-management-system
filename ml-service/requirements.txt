@@ -19,7 +19,6 @@ joblib==1.5.3
 lightgbm==4.6.0
 markdown-it-py==4.2.0
 mdurl==0.1.2
--e git+ssh://git@github.com-RishiAP/RishiAP/stress-management-system.git@8143c13bbb2b4e4c7ab5a83c98dc779c856ad17a#egg=ml_inference_service&subdirectory=ml-service
 numpy==2.4.6
 nvidia-nccl-cu12==2.30.4
 packaging==26.2
