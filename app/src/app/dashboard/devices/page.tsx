@@ -62,6 +62,32 @@ function formatRelative(dateStr: string | null) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function TokenDisplay({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div 
+        className="rounded-md bg-muted p-3 font-mono text-xs break-all cursor-pointer hover:bg-muted/80 transition-colors"
+        onClick={copy}
+        title="Click to copy"
+      >
+        {token}
+      </div>
+      <Button size="sm" variant="outline" onClick={copy} className="w-full gap-2">
+        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        {copied ? "Copied!" : "Copy Token"}
+      </Button>
+    </div>
+  );
+}
+
 function TokenReveal({ token }: { token: string }) {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -73,19 +99,33 @@ function TokenReveal({ token }: { token: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div 
-        className="flex items-center gap-2 bg-muted px-2 py-1 rounded cursor-pointer hover:bg-muted/80 transition-colors border"
-        onClick={() => setShow(!show)}
-        title="Click to reveal/hide"
+    <div className="flex items-center gap-2 max-w-[250px]">
+      <span 
+        className={`flex-1 font-mono text-xs leading-relaxed cursor-pointer hover:text-primary transition-colors ${show ? 'break-all' : 'truncate'}`}
+        onClick={copy}
+        title="Click to copy"
       >
-        {show ? <EyeOff className="h-3 w-3 text-muted-foreground" /> : <Eye className="h-3 w-3 text-muted-foreground" />}
-        <code className="text-xs font-mono max-w-[120px] sm:max-w-[200px] truncate">
-          {show ? token : "••••••••••••••••••••••••"}
-        </code>
-      </div>
-      <Button variant="ghost" size="icon" onClick={copy} title="Copy Token" className="h-7 w-7">
-        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+        {show ? token : "••••••••••••••••••••••••••••"}
+      </span>
+      
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-6 w-6 shrink-0 text-muted-foreground" 
+        onClick={() => setShow(!show)} 
+        title={show ? "Hide token" : "Reveal token"}
+      >
+        {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+      </Button>
+      
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-6 w-6 shrink-0 text-muted-foreground" 
+        onClick={copy} 
+        title="Copy token"
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
     </div>
   );
@@ -169,8 +209,8 @@ export default function DevicesPage() {
                     your ESP32 firmware config now.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="flex justify-center p-4">
-                  <TokenReveal token={newDevice.token!} />
+                <div className="py-2">
+                  <TokenDisplay token={newDevice.token!} />
                 </div>
                 <Button
                   variant="outline"

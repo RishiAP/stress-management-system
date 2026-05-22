@@ -78,21 +78,27 @@ bool isWindowReady() {
 }
 
 void getWindow(float* bvp, float* gsr, float* temp) {
-  // Copy buffers out
+  // Copy full buffers out
   memcpy(bvp, bvpBuffer, BVP_BUFFER_SIZE * sizeof(float));
   memcpy(gsr, gsrBuffer, GSR_BUFFER_SIZE * sizeof(float));
   memcpy(temp, tempBuffer, TEMP_BUFFER_SIZE * sizeof(float));
 
-  // Reset for next window
-  bvpIdx = 0;
-  gsrIdx = 0;
-  tempIdx = 0;
+  // Implement Sliding Window: Shift the retained data to the beginning
+  int bvpRetain = BVP_BUFFER_SIZE - (BVP_HZ * SLIDE_SECONDS);
+  if (bvpRetain > 0) memmove(bvpBuffer, bvpBuffer + (BVP_HZ * SLIDE_SECONDS), bvpRetain * sizeof(float));
+  bvpIdx = bvpRetain;
   bvpFull = false;
-  gsrFull = false;
-  tempFull = false;
 
-  unsigned long now = micros();
-  lastBvpUs = now;
-  lastGsrUs = now;
-  lastTempUs = now;
+  int gsrRetain = GSR_BUFFER_SIZE - (GSR_HZ * SLIDE_SECONDS);
+  if (gsrRetain > 0) memmove(gsrBuffer, gsrBuffer + (GSR_HZ * SLIDE_SECONDS), gsrRetain * sizeof(float));
+  gsrIdx = gsrRetain;
+  gsrFull = false;
+
+  int tempRetain = TEMP_BUFFER_SIZE - (TEMP_HZ * SLIDE_SECONDS);
+  if (tempRetain > 0) memmove(tempBuffer, tempBuffer + (TEMP_HZ * SLIDE_SECONDS), tempRetain * sizeof(float));
+  tempIdx = tempRetain;
+  tempFull = false;
+  
+  // Note: We deliberately do NOT reset lastBvpUs/lastGsrUs/lastTempUs here 
+  // because we want the sampler to continue smoothly filling the buffer
 }

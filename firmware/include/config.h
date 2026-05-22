@@ -21,7 +21,8 @@
 #define TEMP_HZ 1
 
 // ─── Window Duration ────────────────────────────────────────────────────────
-#define WINDOW_SECONDS 10
+#define WINDOW_SECONDS 30
+#define SLIDE_SECONDS 10
 
 // ─── Buffer Sizes (computed from rates × window) ────────────────────────────
 #define BVP_BUFFER_SIZE (BVP_HZ * WINDOW_SECONDS)   // 1000

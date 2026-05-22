@@ -41,21 +41,21 @@ bool sendWindow(const float* bvp, int bvpLen,
   JsonArray bvpArr = doc["bvp_window"].to<JsonArray>();
   if (bvp != nullptr) {
     for (int i = 0; i < bvpLen; i++) {
-      bvpArr.add(serialized(String(bvp[i], 2)));
+      bvpArr.add((int)bvp[i]); // Cast to int to save ~10KB of JSON space
     }
   }
 
   JsonArray gsrArr = doc["gsr_window"].to<JsonArray>();
   if (gsr != nullptr) {
     for (int i = 0; i < gsrLen; i++) {
-      gsrArr.add(serialized(String(gsr[i], 4)));
+      gsrArr.add(serialized(String(gsr[i], 3))); // 3 decimals instead of 4
     }
   }
 
   JsonArray tempArr = doc["temp_window"].to<JsonArray>();
   if (temp != nullptr) {
     for (int i = 0; i < tempLen; i++) {
-      tempArr.add(serialized(String(temp[i], 2)));
+      tempArr.add(serialized(String(temp[i], 1))); // 1 decimal instead of 2
     }
   }
 
