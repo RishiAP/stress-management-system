@@ -54,7 +54,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
     allow_credentials=False,
-    allow_methods=["POST", "GET"],
+    allow_methods=["POST", "GET", "HEAD"],
     allow_headers=["Content-Type", "X-API-Key"],
 )
 
@@ -62,6 +62,7 @@ app.add_middleware(
 app.include_router(predict_router)
 
 
+@app.head("/health", summary="Health check (Uptime bots)")
 @app.get("/health", summary="Health check (no auth)")
 def health():
     """Health check endpoint — no API key required.
